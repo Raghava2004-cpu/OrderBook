@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OrderBook Benchmark Dashboard</title>
+<style>
+  :root { --bg: #09090b; --card: #18181b; --border: #27272a; --text: #f4f4f5; --muted: #71717a; --green: #22c55e; --red: #ef4444; --purple: #a78bfa; --blue: #60a5fa; --amber: #fbbf24; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; min-height: 100vh; padding: 24px; }
+
+  header { text-align: center; margin-bottom: 28px; }
+  header h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.04em; margin-bottom: 6px; }
+  header p  { color: var(--muted); font-size: 0.85rem; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; background: #22c55e15; color: var(--green); border: 1px solid #22c55e30; border-radius: 99px; padding: 4px 12px; font-size: 0.75rem; font-weight: 600; margin-top: 10px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 1.5s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .dot.off { background: var(--red); animation: none; }
+
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+  .kpi { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+  .kpi-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+  .kpi-value { font-size: 1.7rem; font-weight: 700; font-family: monospace; line-height: 1; }
+  .kpi-sub { font-size: 0.75rem; color: var(--muted); margin-top: 6px; }
+  .green { color: var(--green); }
+  .purple { color: var(--purple); }
+  .blue { color: var(--blue); }
+  .amber { color: var(--amber); }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+  .card-title { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 14px; }
+
+  canvas { width: 100%; height: 160px; display: block; }
+
+  .ob-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .ob-side-label { font-size: 0.72rem; font-weight: 600; margin-bottom: 8px; }
+  .ob-row { display: flex; justify-content: space-between; padding: 5px 8px; border-radius: 6px; font-size: 0.8rem; font-family: monospace; margin-bottom: 3px; }
+  .bid-row { background: #22c55e12; }
+  .ask-row { background: #ef444412; }
+  .ob-price { font-weight: 600; }
+  .ask-label { color: var(--red); }
+  .ask-price-red { color: var(--red); }
+  .muted-text { color: var(--muted); }
+  .perf-block { margin-bottom: 14px; }
+  .perf-row { display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 4px; }
+  .mono-small { font-family: monospace; font-size: 0.78rem; }
+  .bar-caption { font-size: 0.7rem; color: var(--muted); margin-top: 3px; }
+  .mt-6 { margin-top: 6px; }
+  .mt-16 { margin-top: 16px; }
+  .bar-fill.purple { background: var(--purple); width: 0%; }
+  .bar-fill.blue { background: var(--blue); width: 0%; }
+  .ob-spread { text-align: center; padding: 8px; font-size: 0.8rem; color: var(--muted); border-top: 1px solid var(--border); margin-top: 8px; }
+
+  .feed { max-height: 180px; overflow-y: auto; }
+  .feed-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-radius: 6px; margin-bottom: 4px; font-size: 0.78rem; background: #ffffff06; animation: slidein 0.25s ease; }
+  @keyframes slidein { from { opacity:0; transform: translateY(-6px); } to { opacity:1; transform:none; } }
+  .feed-label { color: var(--muted); font-family: monospace; }
+  .feed-val { font-weight: 600; font-family: monospace; }
+
+  .bar-wrap { height: 6px; background: #ffffff10; border-radius: 99px; margin-top: 6px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 99px; transition: width 0.6s ease; }
+
+  @media (max-width: 700px) {
+    .kpi-row { grid-template-columns: 1fr 1fr; }
+    .grid2 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>OrderBook Benchmark Dashboard</h1>
+  <p>Live performance telemetry · Rust / Tokio matching engine</p>
+  <div class="badge"><div class="dot" id="dot"></div><span id="conn-txt">Connecting...</span></div>
+</header>
+
+<div class="kpi-row">
+  <div class="kpi">
+    <div class="kpi-label">Throughput</div>
+    <div class="kpi-value green" id="kpi-ops">—</div>
+    <div class="kpi-sub" id="kpi-ops-sub">orders per second</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Avg latency</div>
+    <div class="kpi-value purple" id="kpi-avg">—</div>
+    <div class="kpi-sub">nanoseconds per order</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">P99 latency</div>
+    <div class="kpi-value blue" id="kpi-p99">—</div>
+    <div class="kpi-sub">worst 1% of orders</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Total processed</div>
+    <div class="kpi-value amber" id="kpi-total">—</div>
+    <div class="kpi-sub" id="kpi-fills">— fills emitted</div>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <div class="card-title">Throughput history (orders/sec)</div>
+    <canvas id="chart-ops"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-title">Latency history (avg ns)</div>
+    <canvas id="chart-lat"></canvas>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <div class="card-title">Live order book snapshot</div>
+    <div class="ob-grid">
+      <div>
+        <div class="ob-side-label green">Bids (buy)</div>
+        <div class="ob-row bid-row"><span class="ob-price green" id="bid0">—</span><span>—</span></div>
+        <div class="ob-row bid-row"><span class="ob-price green" id="bid1">—</span><span>—</span></div>
+        <div class="ob-row bid-row"><span class="ob-price green" id="bid2">—</span><span>—</span></div>
+      </div>
+      <div>
+        <div class="ob-side-label ask-label">Asks (sell)</div>
+        <div class="ob-row ask-row"><span class="ob-price ask-price-red" id="ask0">—</span><span>—</span></div>
+        <div class="ob-row ask-row"><span class="ob-price ask-price-red" id="ask1">—</span><span>—</span></div>
+        <div class="ob-row ask-row"><span class="ob-price ask-price-red" id="ask2">—</span><span>—</span></div>
+      </div>
+    </div>
+    <div class="ob-spread">Spread: <strong id="spread-val">—</strong></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Performance breakdown</div>
+    <div class="perf-block">
+      <div class="perf-row">
+        <span class="muted-text">Avg latency vs P99</span>
+        <span id="bar-label" class="mono-small">—</span>
+      </div>
+      <div class="bar-wrap"><div class="bar-fill purple" id="bar-avg"></div></div>
+      <div class="bar-caption">avg</div>
+      <div class="bar-wrap mt-6"><div class="bar-fill blue" id="bar-p99"></div></div>
+      <div class="bar-caption">p99</div>
+    </div>
+    <div class="card-title mt-16">Update feed</div>
+    <div class="feed" id="feed"></div>
+  </div>
+</div>
+
+<script>
+// ── canvas chart helper ────────────────────────────────────────────────────
+function makeChart(id, color, maxPoints = 30) {
+  const canvas = document.getElementById(id);
+  const ctx = canvas.getContext('2d');
+  const data = [];
+  function draw() {
+    const W = canvas.offsetWidth; const H = canvas.offsetHeight;
+    canvas.width = W; canvas.height = H;
+    ctx.clearRect(0, 0, W, H);
+    if (data.length < 2) return;
+    const max = Math.max(...data) * 1.1 || 1;
+    const min = Math.min(...data) * 0.9;
+    // grid lines
+    ctx.strokeStyle = '#ffffff08'; ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+      const y = H - (i / 4) * H;
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+    // gradient fill
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, color + '44');
+    grad.addColorStop(1, color + '00');
+    ctx.beginPath();
+    data.forEach((v, i) => {
+      const x = (i / (data.length - 1)) * W;
+      const y = H - ((v - min) / (max - min || 1)) * H * 0.85 - H * 0.05;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+    ctx.fillStyle = grad; ctx.fill();
+    // line
+    ctx.beginPath();
+    data.forEach((v, i) => {
+      const x = (i / (data.length - 1)) * W;
+      const y = H - ((v - min) / (max - min || 1)) * H * 0.85 - H * 0.05;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = color; ctx.lineWidth = 2;
+    ctx.lineJoin = 'round'; ctx.stroke();
+    // latest value dot
+    const lx = W;
+    const lv = data[data.length - 1];
+    const ly = H - ((lv - min) / (max - min || 1)) * H * 0.85 - H * 0.05;
+    ctx.beginPath(); ctx.arc(lx - 2, ly, 4, 0, Math.PI * 2);
+    ctx.fillStyle = color; ctx.fill();
+  }
+  return { push(v) { data.push(v); if (data.length > maxPoints) data.shift(); draw(); }, draw };
+}
+
+const opsChart = makeChart('chart-ops', '#22c55e');
+const latChart = makeChart('chart-lat', '#a78bfa');
+window.addEventListener('resize', () => { opsChart.draw(); latChart.draw(); });
+
+// ── number formatters ──────────────────────────────────────────────────────
+const fmtOps   = v => v >= 1e6 ? (v/1e6).toFixed(2)+'M' : (v/1e3).toFixed(1)+'K';
+const fmtNs    = v => v >= 1000 ? (v/1000).toFixed(1)+'µs' : Math.round(v)+'ns';
+const fmtCount = v => v >= 1e6 ? (v/1e6).toFixed(2)+'M' : v >= 1e3 ? (v/1e3).toFixed(1)+'K' : v;
+
+// ── feed ───────────────────────────────────────────────────────────────────
+let feedCount = 0;
+function addFeed(label, val, color) {
+  const feed = document.getElementById('feed');
+  const row = document.createElement('div');
+  row.className = 'feed-row';
+  const ts = new Date().toLocaleTimeString('en', {hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  row.innerHTML = `<span class="feed-label">${ts} · ${label}</span><span class="feed-val" style="color:${color}">${val}</span>`;
+  feed.prepend(row);
+  while (feed.children.length > 12) feed.removeChild(feed.lastChild);
+}
+
+// ── websocket ──────────────────────────────────────────────────────────────
+let lastOps = 0;
+function connect() {
+  const ws = new WebSocket(`ws://${location.host}/ws`);
+  const dot = document.getElementById('dot');
+  const txt = document.getElementById('conn-txt');
+
+  ws.onopen = () => {
+    dot.className = 'dot'; txt.textContent = 'Live · Rust engine connected';
+  };
+
+  ws.onmessage = (e) => {
+    const d = JSON.parse(e.data);
+
+    // KPIs
+    document.getElementById('kpi-ops').textContent   = fmtOps(d.orders_per_sec);
+    document.getElementById('kpi-avg').textContent   = fmtNs(d.avg_latency_ns);
+    document.getElementById('kpi-p99').textContent   = fmtNs(d.p99_latency_ns);
+    document.getElementById('kpi-total').textContent = fmtCount(d.total_orders);
+    document.getElementById('kpi-fills').textContent = fmtCount(d.total_fills) + ' fills emitted';
+    document.getElementById('kpi-ops-sub').textContent = d.throughput_label;
+
+    // Charts
+    opsChart.push(d.orders_per_sec);
+    latChart.push(d.avg_latency_ns);
+
+    // Order book snapshot (simulated levels around best bid/ask)
+    const bb = d.best_bid; const ba = d.best_ask;
+    ['bid0','bid1','bid2'].forEach((id, i) => {
+      document.getElementById(id).textContent = '$' + (bb - i * 0.05).toFixed(2);
+    });
+    ['ask0','ask1','ask2'].forEach((id, i) => {
+      document.getElementById(id).textContent = '$' + (ba + i * 0.05).toFixed(2);
+    });
+    document.getElementById('spread-val').textContent = '$' + d.spread.toFixed(2);
+
+    // Performance bars
+    const maxNs = Math.max(d.p99_latency_ns, 1);
+    document.getElementById('bar-avg').style.width = Math.min(100, (d.avg_latency_ns / maxNs) * 100) + '%';
+    document.getElementById('bar-p99').style.width = '100%';
+    document.getElementById('bar-label').textContent = fmtNs(d.avg_latency_ns) + ' / ' + fmtNs(d.p99_latency_ns);
+
+    // Feed entries
+    if (Math.abs(d.orders_per_sec - lastOps) / (lastOps || 1) > 0.01) {
+      const dir = d.orders_per_sec > lastOps ? '↑' : '↓';
+      addFeed('throughput ' + dir, d.throughput_label, d.orders_per_sec > lastOps ? '#22c55e' : '#ef4444');
+      lastOps = d.orders_per_sec;
+    }
+    addFeed('p99 latency', fmtNs(d.p99_latency_ns), '#60a5fa');
+  };
+
+  ws.onclose = () => {
+    dot.className = 'dot off'; txt.textContent = 'Disconnected — retrying...';
+    setTimeout(connect, 2000);
+  };
+}
+
+connect();
+</script>
+</body>
+</html>
+HTMLEOF
+echo "done"
