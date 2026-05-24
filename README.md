@@ -5,21 +5,21 @@ A FIFO price-time priority matching engine built in Rust.
 Processes **1.2M+ orders/sec** with P99 latency under **250ns**.
 
 ## Benchmark Results
-order-book/limit-order-no-match
-                        time:   [95.543 ns 97.853 ns 100.03 ns]
-                        thrpt:  [9.9968 Melem/s 10.219 Melem/s 10.466 Melem/s]
-                 change:
-                        time:   [-16.775% -10.863% -4.9920%] (p = 0.00 < 0.05)
-                        thrpt:  [+5.2543% +12.187% +20.156%]
-                        Performance has improved.
+- order-book/limit-order-no-match:
+- time: [95.543 ns 97.853 ns 100.03 ns]
+- thrpt:  [9.9968 Melem/s 10.219 Melem/s 10.466 Melem/s]
+- change:
+- time:   [-16.775% -10.863% -4.9920%] (p = 0.00 < 0.05)
+- thrpt:  [+5.2543% +12.187% +20.156%]
+- Performance has improved.
 
-order-book/limit-order-with-match
-                        time:   [194.73 ns 195.23 ns 195.71 ns]
-                        thrpt:  [5.1095 Melem/s 5.1223 Melem/s 5.1352 Melem/s]
-                 change:
-                        time:   [-0.9761% -0.3319% +0.2483%] (p = 0.30 > 0.05)
-                        thrpt:  [-0.2477% +0.3330% +0.9857%]
-                        No change in performance detected.
+- order-book/limit-order-with-match
+- time:   [194.73 ns 195.23 ns 195.71 ns]
+- thrpt:  [5.1095 Melem/s 5.1223 Melem/s 5.1352 Melem/s]
+- change:
+- time:   [-0.9761% -0.3319% +0.2483%] (p = 0.30 > 0.05)
+- thrpt:  [-0.2477% +0.3330% +0.9857%]
+- No change in performance detected.
 
 
 
