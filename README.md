@@ -3,6 +3,8 @@
 
 A FIFO price-time priority matching engine built in Rust.
 Processes **1.2M+ orders/sec** with P99 latency under **250ns**.
+Description: FIFO price-time priority order matching engine in Rust — 10M orders/sec, P99 < 200ns
+Topics: rust matching-engine low-latency orderbook trading fintech
 
 ## Benchmark Results
 - order-book/limit-order-no-match:
