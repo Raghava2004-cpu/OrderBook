@@ -4,6 +4,7 @@
 Description: FIFO price-time priority order matching engine in Rust — 10M orders/sec, P99 < 200ns
 Topics: rust matching-engine low-latency orderbook trading fintech
 
+- To get detail explanation of this Project I published in Medium https://medium.com/@raghavaashok2004/building-a-nanosecond-order-matching-engine-in-rust-4a7456452446
 ## Benchmark Results
 - order-book/limit-order-no-match:
 - time: [95.543 ns 97.853 ns 100.03 ns]
