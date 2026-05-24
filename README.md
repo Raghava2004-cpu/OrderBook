@@ -7,7 +7,7 @@ Processes **1.2M+ orders/sec** with P99 latency under **250ns**.
 order-book/limit-order-no-match   time: [99 ns]   thrpt: [10M elem/s]
 order-book/limit-order-with-match time: [232 ns]  thrpt: [4.3M elem/s]
 
-![Flamegraph](flamegraph.svg)
+
 
 ## Architecture
 
