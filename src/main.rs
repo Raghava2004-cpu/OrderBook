@@ -19,7 +19,6 @@ struct BenchStats {
     throughput_label:  String,
 }
 
-type SharedStats = Arc<Mutex<BenchStats>>;
 
 #[tokio::main]
 async fn main() {
